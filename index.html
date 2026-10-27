@@ -1,3 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f7f4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cell Counter">
 <title>Hemocytometer &amp; Colony Counter</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -122,7 +130,92 @@ svg.ruling .hit{cursor:pointer}
 svg.dish{display:block;width:100%;height:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:crosshair}
 .dishhead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
 .dishhead .big{font-size:34px}
+
+/* ---------- result bar (phone and narrow tablet) ---------- */
+.mbar{display:none}
+@media (max-width:860px){
+  .mbar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--sheet);border-top:1px solid var(--rule);box-shadow:0 -6px 18px rgba(0,0,0,.08);padding:8px max(14px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));transition:transform .18s ease}
+  .mbar.away{transform:translateY(110%)}
+  .mbar button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;min-height:48px}
+  .mbar .mb-txt{flex:1;min-width:0}
+  .mbar .mb-u{display:block;font-size:13px;color:var(--soft);line-height:1.2}
+  .mbar .mb-v{display:block;font-family:var(--num);font-weight:600;font-size:22px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mbar .mb-s{font-size:14px;color:var(--soft);text-align:right;line-height:1.25;flex:0 0 auto;max-width:42%}
+  .mbar .mb-s b{display:block;color:var(--ink);font-family:var(--num);font-weight:600;font-size:15px}
+  main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+}
+
+/* ---------- phone layout ---------- */
+@media (max-width:620px){
+  header{padding-block:12px 6px;gap:6px 10px;align-items:center}
+  header h1{font-size:21px;flex:1;line-height:1.2}
+  header button{order:2}
+  header p{order:3;flex-basis:100%;font-size:14px;line-height:1.45}
+  .rail button{font-size:15px;padding:12px 10px 10px}
+  main{padding-top:12px}
+  .card{padding:14px;border-radius:12px}
+  h2{font-size:19px}
+  .lede{font-size:15px}
+  label{font-size:14px}
+  input,select,input[type=number],input.num{font-size:16px}  /* 16px stops iOS zooming into a field */
+  .fields{grid-template-columns:1fr 1fr}
+  .src,.legend,.note{font-size:13.5px}
+  .kv{font-size:15px}
+  .big{font-size:28px}
+
+  /* sample prep: a 2 x 2 bench, not a sideways scroll */
+  .train{display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow:visible;padding:0;align-items:stretch}
+  .stage{justify-content:flex-start}
+  .train .arrow{display:none}
+  .stage{min-width:0;border:1px solid var(--rule);border-radius:10px;padding:10px 8px;background:var(--paper)}
+  .stage .cap{font-size:14px}
+  .stage .df{font-size:15px}
+  .stage label{font-size:13px;align-self:stretch;text-align:center}
+  .stage input{width:100%;min-height:44px}
+
+  /* count controls: full-width, thumb-sized */
+  .seg{display:flex;width:100%}
+  .seg button{flex:1;padding:8px 6px;min-height:46px;font-size:14.5px;line-height:1.2}
+  #cMode{width:100%!important}
+
+  /* hemocytometer: small square picker beside the live tally, big counting square below */
+  .instrument{display:grid;grid-template-columns:42% 1fr;gap:8px 12px;align-items:start}
+  .instrument>div{display:contents}
+  .instrument>div:first-child>.slide{grid-column:1;grid-row:1 / span 3;padding:4px}
+  .instrument>div:first-child>.legend{grid-column:1 / -1;grid-row:6;margin-top:0}
+  .zoomhead{grid-column:2;grid-row:1;flex-direction:column;align-items:flex-start;gap:4px;margin:0}
+  .zoomhead b{font-size:15px;line-height:1.25}
+  .zoomhead .num{font-size:17px}
+  #medSeg{grid-column:2;grid-row:2;margin:0!important;flex-wrap:wrap}
+  #medSeg button{min-width:30%;font-size:14px}
+  .instrument>div:last-child>.slide{grid-column:1 / -1;grid-row:4;padding:4px}
+  .instrument>div:last-child>.row{grid-column:1 / -1;grid-row:5;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .instrument>div:last-child>.row .seg{grid-column:1 / -1}
+  .instrument>div:last-child>.row .btn{width:100%;min-height:46px;font-size:14.5px}
+  #edgeLegend{grid-column:1 / -1;grid-row:7;margin-top:0}
+
+  /* plates */
+  .tcol{min-width:86px}
+  .tcol .cap{font-size:14px}
+  .tcol .sub,.xfer{font-size:12.5px}
+  .thumb svg{width:58px;height:58px}
+  .thumb input{width:66px;min-height:40px;font-size:16px}
+  .dishhead .big{font-size:30px}
+  #t-plates .card .row .btn{flex:1 1 40%}
+  #t-plates .card .row{gap:8px}
+  #pLo{width:100%!important}
+  #srTable{font-size:14px}
+  #srTable th,#srTable td{padding:6px 8px 6px 0;white-space:nowrap}
+}
+@media (max-width:360px){
+  .fields{grid-template-columns:1fr}
+  .instrument{grid-template-columns:1fr}
+  .instrument>div>*{grid-column:1!important;grid-row:auto!important}
+  .instrument>div:first-child>.slide{max-width:70%;margin:0 auto}
+}
 </style>
+</head>
+<body>
 
 <header>
   <h1>Hemocytometer &amp; Colony <span>Counter</span></h1>
@@ -400,6 +493,11 @@ svg.dish{display:block;width:100%;height:auto;touch-action:manipulation;user-sel
 </div>
 </section>
 </main>
+
+<div class="mbar" id="mbar" aria-hidden="true"><button type="button" id="mbBtn" tabindex="-1">
+  <span class="mb-txt"><span class="mb-u" id="mbU"></span><span class="mb-v" id="mbV">–</span></span>
+  <span class="mb-s" id="mbS"></span>
+</button></div>
 
 <script>
 'use strict';
@@ -747,6 +845,24 @@ function calcOd(){const od=v('oOd'),cal=v('oCal'),tg=v('oTarget'),fv=v('oFinal')
   if(od!=null&&od>1)f+=flag('','OD above 1.0 is often outside the linear range. Dilute the sample, read again, and multiply back. <span class="tag">LOCAL</span>');
   $('oFlags').innerHTML=f;}
 
+/* =================== RESULT BAR (narrow screens) =================== */
+/* Mirrors the active tool's result so it stays in view while counting; hides when the full readout is on screen. */
+let mbRo=null,mbSeen=false;
+function curReadout(){const s=document.querySelector('section.tool.on');return s?s.querySelector('.readout'):null;}
+function syncBar(){
+  const ro=curReadout();if(!ro)return;
+  const u=ro.querySelector('.unit'),b=ro.querySelector('.big'),dt=ro.querySelector('.kv dt'),dd=ro.querySelector('.kv dd');
+  $('mbU').textContent=u?u.textContent:'';$('mbV').textContent=b?b.textContent:'–';
+  $('mbS').innerHTML=(dt&&dd&&dd.textContent.trim()&&dd.textContent.trim()!=='–')?`${dt.textContent}<b>${dd.textContent}</b>`:'';
+  if(ro!==mbRo){if(mbRo&&window.mbIO)mbIO.unobserve(mbRo);mbRo=ro;mbSeen=false;if(window.mbIO)mbIO.observe(ro);}
+  $('mbar').classList.toggle('away',mbSeen);
+}
+if('IntersectionObserver' in window){window.mbIO=new IntersectionObserver(es=>{for(const e of es)if(e.target===mbRo){mbSeen=e.isIntersecting;$('mbar').classList.toggle('away',mbSeen);}},{threshold:.35});}
+new MutationObserver(()=>syncBar()).observe(document.querySelector('main'),{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class']});
+$('mbBtn').onclick=()=>{const ro=curReadout();if(ro)ro.scrollIntoView({behavior:'smooth',block:'start'});};
+
 /* boot */
-$('cMode').onchange();renderCells();renderSeries();drawDish();go(store.get('bt-tab','cells'));
+$('cMode').onchange();renderCells();renderSeries();drawDish();go(store.get('bt-tab','cells'));syncBar();
 </script>
+</body>
+</html>

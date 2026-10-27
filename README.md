@@ -19,6 +19,8 @@ Items tagged **LOCAL** in the app (CV > 30 %, viability < 80 %, pipetting margin
 25 scripted checks against hand-calculated answers (`tests/check.js`, Playwright). They include the FDA BAM worked example (537 / 0.022 = 24,409 → 24,000), the odd/even rounding rule, the no-colony and all-below-range cases, the center-five mode, and a non-decimal dilution series.
 
 ## Changelog
+**v0.2.0**, 2026-10-27: phone layout. Adds the mobile viewport (text was rendering at desktop width and shrinking on iPhone), a result bar pinned to the bottom of the screen, a 2 × 2 sample-prep bench, the square picker beside the live tally with the counting square full width below it, and thumb-sized controls. No calculation changed.
+
 **v0.1.0**, 2026-10-26: first release.
 
 HAKOYA LLC · Auravyx Systems · Selma, Texas
