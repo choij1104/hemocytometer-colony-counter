@@ -1,0 +1,752 @@
+<title>Bench Tally</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Martian+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one bench sheet. A tool rail of named calculators; each tool is a worksheet with
+   the instrument drawn to scale on the left and the result readout beside it.
+   Identity: the etched Neubauer ruling and the agar plate are the interface — you count on them. */
+:root{
+  --paper:#f6f7f4; --sheet:#ffffff; --ink:#15212b; --soft:#5a6672; --rule:#d5dbd6; --etch:#8f9c94; --etch-lt:#c9d1cb;
+  --glass:#eef3f1; --trypan:#1f4f9c; --trypan-ink:#ffffff; --agar:#b9781d; --agar-gel:#f1dcae; --agar-rim:#d9c9a6;
+  --dead:#9c2f3a; --ok:#2f7a4f; --warn:#a3620a; --tint:#eef2f8; --agar-tint:#fbf3e4; --pen:#22303c;
+  --display:"Atkinson Hyperlegible",system-ui,sans-serif;
+  --num:"Martian Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#11161b; --sheet:#171e25; --ink:#e3e8ec; --soft:#94a1ad; --rule:#2a343e; --etch:#7f8f97; --etch-lt:#3a4852;
+  --glass:#1c252c; --trypan:#7aa6ef; --trypan-ink:#0c1522; --agar:#e2a447; --agar-gel:#4a3a1e; --agar-rim:#6b5a3a;
+  --dead:#ef7d88; --ok:#6fcf95; --warn:#f0b35a; --tint:#1b2633; --agar-tint:#2a2215; --pen:#f3e9d2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11161b; --sheet:#171e25; --ink:#e3e8ec; --soft:#94a1ad; --rule:#2a343e; --etch:#7f8f97; --etch-lt:#3a4852;
+  --glass:#1c252c; --trypan:#7aa6ef; --trypan-ink:#0c1522; --agar:#e2a447; --agar-gel:#4a3a1e; --agar-rim:#6b5a3a;
+  --dead:#ef7d88; --ok:#6fcf95; --warn:#f0b35a; --tint:#1b2633; --agar-tint:#2a2215; --pen:#f3e9d2; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--display)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--trypan);outline-offset:2px}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+
+header{padding-block:18px 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1120px;margin:0 auto;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header h1{margin:0;font-size:26px;letter-spacing:-.01em}
+header h1 span{color:var(--trypan)}
+header p{margin:0;color:var(--soft);font-size:14px;flex:1;min-width:220px}
+header button{background:none;border:1px solid var(--rule);border-radius:6px;padding:6px 10px;color:var(--soft);font-size:13px;min-height:36px}
+
+.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--rule)}
+.rail nav{max-width:1120px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.rail nav::-webkit-scrollbar{display:none}
+.rail button{flex:0 0 auto;background:none;border:0;border-bottom:3px solid transparent;padding:12px 12px 10px;font-weight:700;color:var(--soft);font-size:15px;min-height:46px;cursor:pointer}
+.rail button.on{color:var(--ink);border-bottom-color:var(--trypan)}
+.rail button[data-t="plates"].on{border-bottom-color:var(--agar)}
+
+main{max-width:1120px;margin:0 auto;padding-block:18px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+section.tool{display:none}section.tool.on{display:block}
+.sheet{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.sheet{grid-template-columns:1fr}}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px;min-width:0}
+.card+.card{margin-top:14px}
+.stack{min-width:0}
+h2{font-size:20px;margin:0 0 4px}
+h3{font-size:15px;margin:16px 0 8px;color:var(--soft)}
+.lede{color:var(--soft);font-size:14.5px;margin:0 0 12px;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+label{display:block;font-size:13px;color:var(--soft);margin-bottom:3px;font-weight:700}
+input,select{width:100%;min-height:44px;border:1px solid var(--rule);border-radius:7px;padding:8px 10px;background:var(--paper);font-size:16px}
+input[type=number],input.num{font-family:var(--num);font-size:15px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.btn{border:0;border-radius:7px;background:var(--trypan);color:var(--trypan-ink);font-weight:700;padding:10px 16px;min-height:44px;cursor:pointer}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--rule)}
+.btn.small{min-height:38px;padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.45;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:none;padding:8px 14px;min-height:42px;font-weight:700;color:var(--soft);cursor:pointer}
+.seg button.on{background:var(--trypan);color:var(--trypan-ink)}
+.seg button.on.dd{background:var(--dead);color:#fff}
+
+/* readout */
+.readout{position:sticky;top:64px}
+@media (max-width:860px){.readout{position:static}}
+.big{font-family:var(--num);font-size:30px;font-weight:600;line-height:1.15;word-break:break-word}
+.unit{font-size:14px;color:var(--soft);font-family:var(--display)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin-top:12px;font-size:14.5px}
+.kv dt{color:var(--soft)}
+.kv dd{margin:0;font-family:var(--num);text-align:right;word-break:break-word}
+.note{font-size:13.5px;color:var(--soft);margin-top:12px;border-top:1px solid var(--rule);padding-top:10px}
+.note:empty{display:none}
+.flag{border-left:4px solid var(--warn);background:var(--agar-tint);padding:8px 10px;border-radius:0 6px 6px 0;font-size:14px;margin-top:10px}
+.flag.ok{border-color:var(--ok);background:var(--tint)}
+.flag.bad{border-color:var(--dead)}
+.src{display:block;font-size:12.5px;color:var(--soft);margin-top:6px}
+.tag{display:inline-block;font-size:11px;border:1px solid var(--warn);color:var(--warn);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:1px}
+
+/* ---------- prep train (tubes) ---------- */
+.train{display:flex;align-items:flex-end;gap:4px;overflow-x:auto;padding:6px 2px 4px;scrollbar-width:thin}
+.stage{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px}
+.stage .cap{font-size:12px;font-weight:700;color:var(--soft);text-align:center;line-height:1.25}
+.stage .df{font-family:var(--num);font-size:13px}
+.stage label{margin:0;font-size:11.5px}
+.stage input{width:84px;min-height:38px;padding:4px 6px;text-align:center}
+.arrow{flex:0 0 auto;align-self:center;color:var(--soft);font-size:12px;text-align:center;min-width:40px;line-height:1.2}
+.arrow b{display:block;font-size:18px;color:var(--etch)}
+
+/* ---------- hemocytometer ---------- */
+.instrument{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px;align-items:start}
+@media (max-width:620px){.instrument{grid-template-columns:1fr}}
+.slide{background:linear-gradient(160deg,var(--glass),color-mix(in srgb,var(--glass) 70%,var(--sheet)));border:1px solid var(--rule);border-radius:8px;padding:8px}
+svg.ruling{display:block;width:100%;height:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+svg#zoom{cursor:crosshair}
+svg.ruling .hit{cursor:pointer}
+.zoomhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:2px 0 6px}
+.zoomhead b{font-size:15px}
+.zoomhead .num{font-size:14px}
+.zl{color:var(--trypan)}.zd{color:var(--dead)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--soft);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
+
+/* ---------- plates ---------- */
+.series{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}
+.tcol{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:96px;padding:0 4px}
+.tcol .cap{font-family:var(--num);font-size:13px;font-weight:600}
+.tcol .sub{font-size:11.5px;color:var(--soft);margin-top:-4px;min-height:1em}
+.xfer{flex:0 0 auto;align-self:flex-start;margin-top:22px;font-size:11px;color:var(--soft);text-align:center;min-width:44px;line-height:1.2}
+.xfer b{display:block;font-size:18px;color:var(--agar)}
+.thumbs{display:flex;flex-direction:column;gap:6px;align-items:center}
+.thumb{display:flex;flex-direction:column;align-items:center;gap:2px;border:2px solid transparent;border-radius:10px;padding:3px}
+.thumb.sel{border-color:var(--agar)}
+.thumb svg{width:64px;height:64px;display:block;cursor:pointer}
+.thumb input{width:70px;min-height:34px;padding:2px 4px;text-align:center;font-size:14px}
+.thumb.inr input{border-color:var(--ok);color:var(--ok);font-weight:600}
+.dishwrap{max-width:460px;margin:0 auto}
+svg.dish{display:block;width:100%;height:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:crosshair}
+.dishhead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.dishhead .big{font-size:34px}
+</style>
+
+<header>
+  <h1>Bench <span>Tally</span></h1>
+  <p>Count right on the hemocytometer and the plate, enter the dilutions you actually made, and get the concentration worked the way the methods write it. Nothing leaves this page.</p>
+  <button id="themeBtn" type="button">Dark</button>
+</header>
+<div class="rail"><nav aria-label="Calculators">
+  <button data-t="cells" class="on">Hemocytometer</button>
+  <button data-t="plates">Plates (CFU)</button>
+  <button data-t="seed">Seeding</button>
+  <button data-t="dilute">Dilutions</button>
+  <button data-t="solution">Solutions</button>
+  <button data-t="spin">Centrifuge</button>
+  <button data-t="growth">Growth &amp; OD</button>
+</nav></div>
+
+<main>
+<!-- ================= CELLS ================= -->
+<section class="tool on" id="t-cells">
+<div class="sheet">
+  <div class="stack">
+    <div class="card">
+      <h2>1 · Sample prep</h2>
+      <p class="lede">Enter the volumes you mixed; the dilution factor is built from them. Leave the pre-dilution diluent at 0 if you counted straight from the culture. Set trypan blue to 0 if you did not stain.</p>
+      <div class="train">
+        <div class="stage"><svg viewBox="0 0 40 74" width="40" height="74" aria-hidden="true"><path d="M8 4h24v52a12 12 0 0 1-24 0z" fill="var(--glass)" stroke="var(--etch)" stroke-width="1.5"/><path d="M9 22h22v34a11 11 0 0 1-22 0z" fill="var(--agar)" opacity=".55"/></svg><span class="cap">Cell<br>suspension</span></div>
+        <div class="arrow"><b>→</b></div>
+        <div class="stage"><svg viewBox="0 0 40 74" width="40" height="74" aria-hidden="true"><path d="M8 4h24v52a12 12 0 0 1-24 0z" fill="var(--glass)" stroke="var(--etch)" stroke-width="1.5"/><path d="M9 26h22v30a11 11 0 0 1-22 0z" fill="var(--agar)" id="cPreFill" opacity=".35"/></svg>
+          <span class="cap">Pre-dilution</span>
+          <label for="cPc">cells µL</label><input id="cPc" type="number" step="any" value="100">
+          <label for="cPd">+ diluent µL</label><input id="cPd" type="number" step="any" value="0">
+          <span class="df" id="cPreDf">1:1</span></div>
+        <div class="arrow"><b>→</b></div>
+        <div class="stage"><svg viewBox="0 0 40 74" width="40" height="74" aria-hidden="true"><path d="M8 4h24v52a12 12 0 0 1-24 0z" fill="var(--glass)" stroke="var(--etch)" stroke-width="1.5"/><path d="M9 30h22v26a11 11 0 0 1-22 0z" fill="var(--trypan)" opacity=".55"/></svg>
+          <span class="cap">Stain mix</span>
+          <label for="cSs">sample µL</label><input id="cSs" type="number" step="any" value="10">
+          <label for="cSt">+ trypan blue µL</label><input id="cSt" type="number" step="any" value="10">
+          <span class="df" id="cStDf">1:2</span></div>
+        <div class="arrow"><b>→</b>load</div>
+        <div class="stage"><svg viewBox="0 0 70 40" width="70" height="40" aria-hidden="true"><rect x="2" y="8" width="66" height="24" rx="2" fill="var(--glass)" stroke="var(--etch)"/><rect x="24" y="12" width="22" height="16" fill="none" stroke="var(--trypan)" stroke-width="1.2"/><path d="M28 12v16M32 12v16M36 12v16M40 12v16M24 16h22M24 20h22M24 24h22" stroke="var(--etch)" stroke-width=".5"/></svg>
+          <span class="cap">Chamber</span><span class="df">DF <b id="cDfOut">2</b></span></div>
+      </div>
+      <p class="src">Equal volumes of cells and 0.4 % trypan blue give a dilution factor of 2. [Merck, Cell quantification]</p>
+    </div>
+
+    <div class="card">
+      <h2>2 · Count on the chamber</h2>
+      <p class="lede">Improved Neubauer ruling, 3 × 3 mm, 0.1 mm deep. Pick a square on the grid. On the enlarged square, tap where each cell sits; tap a mark to remove it. In Center 5 mode each 0.2 mm square opens on its own; step through 1–5.</p>
+      <div class="row" style="margin-top:0">
+        <div class="seg" role="group" aria-label="Region"><button type="button" data-rg="large" class="on">Large squares</button><button type="button" data-rg="medium">Center 5 (small cells)</button></div>
+        <div class="seg" role="group" aria-label="Edge convention"><button type="button" data-ed="TL" class="on">Count top + left</button><button type="button" data-ed="TR">Count top + right</button></div>
+        <select id="cMode" style="width:auto" aria-label="Entry mode"><option value="tap">Count by tapping</option><option value="type">Type totals</option></select>
+      </div>
+      <div class="instrument" style="margin-top:12px" id="tapBox">
+        <div>
+          <div class="slide"><svg class="ruling" id="overview" viewBox="-4 -4 308 308" role="group" aria-label="Hemocytometer grid. Choose a square."></svg></div>
+          <div class="legend"><span><i style="background:var(--trypan)"></i>shaded = in the average</span><span>live · dead per square</span></div>
+        </div>
+        <div>
+          <div class="zoomhead"><b id="zName">Top left</b><span class="num"><span class="zl" id="zLive">0</span> live · <span class="zd" id="zDead">0</span> dead</span></div>
+          <div class="seg" id="medSeg" role="group" aria-label="Medium square" hidden style="margin-bottom:6px"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div>
+          <div class="slide"><svg class="ruling" id="zoom" viewBox="-7 -7 114 114" aria-label="Enlarged square. Tap to mark a cell."></svg></div>
+          <div class="row">
+            <div class="seg" role="group" aria-label="Mark type"><button type="button" data-mk="l" class="on">Live</button><button type="button" data-mk="d" class="dd">Dead</button></div>
+            <button class="btn ghost small" id="zUse" type="button">Leave out</button>
+            <button class="btn ghost small" id="cellUndo" type="button">Undo</button>
+            <button class="btn ghost small" id="zClear" type="button">Clear square</button>
+          </div>
+          <div class="legend" id="edgeLegend"></div>
+        </div>
+      </div>
+      <div class="fields" id="typeBox" hidden style="margin-top:12px">
+        <div><label for="cLive">Live cells counted</label><input id="cLive" type="number" step="1" min="0"></div>
+        <div><label for="cDead">Dead cells counted</label><input id="cDead" type="number" step="1" min="0"></div>
+        <div><label for="cSq" id="cSqLbl">Large squares counted</label><input id="cSq" type="number" step="1" min="1" value="4"></div>
+      </div>
+      <div class="row"><label for="cVol" style="margin:0">Suspension volume (mL)</label><input id="cVol" type="number" step="any" value="10" style="max-width:140px"><button class="btn ghost small" id="cellReset" type="button">Clear all counts</button></div>
+    </div>
+  </div>
+
+  <div class="card readout" aria-live="polite">
+    <div class="unit">Live cells per mL</div>
+    <div class="big" id="cOut">–</div>
+    <dl class="kv">
+      <dt>Viability</dt><dd id="cVia">–</dd>
+      <dt>Total cells per mL</dt><dd id="cTot">–</dd>
+      <dt>Live cells in suspension</dt><dd id="cAll">–</dd>
+      <dt>Cells counted</dt><dd id="cN">–</dd>
+      <dt>Squares averaged</dt><dd id="cK">–</dd>
+      <dt>Volume per square</dt><dd id="cVq">–</dd>
+      <dt>Dilution factor</dt><dd id="cDfK">–</dd>
+    </dl>
+    <div id="cFlags"></div>
+    <div class="note" id="cFormula"></div>
+    <div class="note">Large square: 1 mm × 1 mm × 0.1 mm = 10⁻⁴ mL. Center medium square: 0.2 × 0.2 × 0.1 mm = 4 × 10⁻⁶ mL; the five used for small cells (80 small squares) total 2 × 10⁻⁵ mL. Count enough squares to pass 100 cells. Edge conventions differ between protocols; pick one and keep it.
+      <span class="src">[Merck, Cell quantification] [INTEGRA Biosciences, Cell counting with a hemocytometer]</span></div>
+    <div class="row"><button class="btn small" id="toSeed" type="button">Use for seeding →</button></div>
+  </div>
+</div>
+</section>
+
+<!-- ================= PLATES ================= -->
+<section class="tool" id="t-plates">
+<div class="sheet">
+  <div class="stack">
+    <div class="card">
+      <h2>1 · Dilution series</h2>
+      <p class="lede">Enter the transfer you made at each step. Each tube's plates sit under it. Tap a plate to count on it, or type the count under it (TNTC accepted).</p>
+      <div class="fields">
+        <div><label for="pTr">Transfer (µL)</label><input id="pTr" type="number" step="any" value="100"></div>
+        <div><label for="pDil">Into diluent (µL)</label><input id="pDil" type="number" step="any" value="900"></div>
+        <div><label for="pN">Dilution tubes</label><input id="pN" type="number" step="1" min="1" max="10" value="6"></div>
+        <div><label for="pPer">Plates per tube</label><select id="pPer"><option>1</option><option selected>2</option><option>3</option></select></div>
+        <div><label for="pVol">Volume plated (mL)</label><input id="pVol" type="number" step="any" value="0.1"></div>
+        <div><label for="pUnit">Report per</label><select id="pUnit"><option value="mL">mL</option><option value="g">g</option></select></div>
+      </div>
+      <div class="series" id="series" style="margin-top:14px"></div>
+      <div class="row"><button class="btn ghost small" id="pEx" type="button">Load BAM worked example</button><button class="btn ghost small" id="pClear" type="button">Clear all plates</button>
+        <label for="pLo" style="margin:0">Countable range</label><select id="pLo" style="width:auto"><option value="25-250">25–250 (FDA BAM)</option><option value="30-300">30–300</option></select></div>
+      <p class="src">Volume plated: 1 mL for a pour plate, 0.1 mL for a typical spread plate. If the sample was already a 1:10 homogenate, read "Sample" as 10⁻¹ and add one decade to each tube.</p>
+    </div>
+    <div class="card">
+      <div class="dishhead"><h2 id="dTitle">Plate</h2><span><span class="big num" id="dCount">0</span> <span class="unit">colonies</span></span></div>
+      <p class="lede">Tap each colony as you count it, like dotting the lid with a marker. Tap a dot to remove it. Sectors help you keep your place.</p>
+      <div class="dishwrap"><svg class="dish" id="dish" viewBox="0 0 100 100" aria-label="Agar plate. Tap to mark a colony."></svg></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn ghost small" id="dUndo" type="button">Undo</button>
+        <button class="btn ghost small" id="dSect" type="button">Sectors</button>
+        <button class="btn ghost small" id="dTntc" type="button">Mark TNTC</button>
+        <button class="btn ghost small" id="dClr" type="button">Clear plate</button>
+      </div>
+    </div>
+  </div>
+  <div class="card readout" aria-live="polite">
+    <div class="unit" id="pUnitLbl">CFU per mL</div>
+    <div class="big" id="pOut">–</div>
+    <dl class="kv"><dt>Unrounded</dt><dd id="pRaw">–</dd><dt>Plates used</dt><dd id="pUsed">–</dd><dt>Fold per step</dt><dd id="pFold">–</dd></dl>
+    <div id="pWork" class="note"></div>
+    <div id="pFlags"></div>
+    <div class="note">N = ΣC ÷ [(1 × n₁) + (0.1 × n₂)] × d, using plates inside the range from two consecutive decimal dilutions; d is the first dilution counted. For other step sizes the same weighting is applied: ΣC ÷ (n₁·D₁ + n₂·D₂). Divided by the volume plated. Report two significant figures; a third digit of 5 rounds up only when the second digit is odd.
+      <span class="src">[FDA BAM Chapter 3, Aerobic Plate Count]</span></div>
+  </div>
+</div>
+</section>
+
+<!-- ================= SEEDING ================= -->
+<section class="tool" id="t-seed">
+<div class="sheet">
+  <div class="card">
+    <h2>Seeding plan</h2>
+    <p class="lede">How much cell suspension and medium to mix for a set of wells or flasks.</p>
+    <div class="fields">
+      <div><label for="sConc">Stock live cells/mL</label><input id="sConc" type="number" step="any"></div>
+      <div><label for="sPer">Cells per well</label><input id="sPer" type="number" step="any" value="10000"></div>
+      <div><label for="sWells">Number of wells</label><input id="sWells" type="number" step="1" value="96"></div>
+      <div><label for="sVolW">Volume per well (µL)</label><input id="sVolW" type="number" step="any" value="100"></div>
+      <div><label for="sExtra">Extra for pipetting loss (%)</label><input id="sExtra" type="number" step="any" value="10"></div>
+    </div>
+  </div>
+  <div class="card readout" aria-live="polite">
+    <div class="unit">Cell suspension to add</div>
+    <div class="big" id="sOut">–</div>
+    <dl class="kv"><dt>Medium to add</dt><dd id="sMed">–</dd><dt>Total mix volume</dt><dd id="sTotV">–</dd><dt>Cells needed</dt><dd id="sCells">–</dd><dt>Final density</dt><dd id="sDens">–</dd></dl>
+    <div id="sFlags"></div>
+    <div class="note">Extra volume is a planning margin you set; it is not from a method. <span class="tag">LOCAL</span></div>
+  </div>
+</div>
+</section>
+
+<!-- ================= DILUTIONS ================= -->
+<section class="tool" id="t-dilute">
+<div class="sheet">
+  <div class="card">
+    <h2>C₁V₁ = C₂V₂</h2>
+    <p class="lede">Leave one box empty; it is solved from the other three. Use the same concentration unit for C₁ and C₂ and the same volume unit for V₁ and V₂.</p>
+    <div class="fields">
+      <div><label for="dC1">C₁ stock</label><input id="dC1" type="number" step="any"></div>
+      <div><label for="dV1">V₁ stock volume</label><input id="dV1" type="number" step="any"></div>
+      <div><label for="dC2">C₂ final</label><input id="dC2" type="number" step="any"></div>
+      <div><label for="dV2">V₂ final volume</label><input id="dV2" type="number" step="any"></div>
+    </div>
+    <h3>Serial dilution</h3>
+    <div class="fields">
+      <div><label for="srStart">Starting concentration</label><input id="srStart" type="number" step="any" value="1"></div>
+      <div><label for="srFold">Fold per step</label><input id="srFold" type="number" step="any" value="10"></div>
+      <div><label for="srSteps">Steps</label><input id="srSteps" type="number" step="1" value="6"></div>
+      <div><label for="srVol">Final volume per tube (µL)</label><input id="srVol" type="number" step="any" value="1000"></div>
+    </div>
+  </div>
+  <div class="card readout" aria-live="polite">
+    <div class="unit" id="dLbl">Solved value</div>
+    <div class="big" id="dOut">–</div>
+    <div id="dFlags"></div>
+    <h3>Serial plan</h3>
+    <div style="overflow-x:auto"><table id="srTable" style="border-collapse:collapse;width:100%;font-size:14px;text-align:left"><thead><tr><th>Tube</th><th>Dilution</th><th>Conc.</th><th>Carry (µL)</th><th>Diluent (µL)</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">Each tube gets the carry volume from the tube before it plus diluent, and keeps the final volume after passing its carry on. The last tube keeps carry + final volume.</div>
+  </div>
+</div>
+</section>
+
+<!-- ================= SOLUTIONS ================= -->
+<section class="tool" id="t-solution">
+<div class="sheet">
+  <div class="card">
+    <h2>Make a solution</h2>
+    <p class="lede">Mass to weigh for a molar solution, or a percent (w/v) solution.</p>
+    <div class="fields">
+      <div><label for="mType">Type</label><select id="mType"><option value="molar">Molar (mol/L)</option><option value="pct">Percent w/v (g/100 mL)</option><option value="mgml">mg/mL</option></select></div>
+      <div><label for="mConc">Concentration</label><input id="mConc" type="number" step="any" value="1"></div>
+      <div id="mConcUWrap"><label for="mConcU">Unit</label><select id="mConcU"><option value="1">M</option><option value="1e-3" selected>mM</option><option value="1e-6">µM</option><option value="1e-9">nM</option></select></div>
+      <div><label for="mVol">Final volume</label><input id="mVol" type="number" step="any" value="100"></div>
+      <div><label for="mVolU">Volume unit</label><select id="mVolU"><option value="1">L</option><option value="1e-3" selected>mL</option><option value="1e-6">µL</option></select></div>
+      <div id="mMwWrap"><label for="mMw">Molecular weight (g/mol)</label><input id="mMw" type="number" step="any" placeholder="from the bottle"></div>
+    </div>
+    <p class="src">Use the formula weight printed on your reagent bottle, including any water of hydration.</p>
+  </div>
+  <div class="card readout" aria-live="polite">
+    <div class="unit">Weigh</div>
+    <div class="big" id="mOut">–</div>
+    <dl class="kv" id="mKv"></dl>
+    <div class="note">Mass (g) = concentration (mol/L) × volume (L) × MW (g/mol). Dissolve in less than the final volume, then bring to volume.</div>
+  </div>
+</div>
+</section>
+
+<!-- ================= SPIN ================= -->
+<section class="tool" id="t-spin">
+<div class="sheet">
+  <div class="card">
+    <h2>RPM ↔ RCF (× g)</h2>
+    <p class="lede">Rotor radius is the distance from the center of the rotor to the sample, in cm. Find it in the rotor manual; it differs between rotors.</p>
+    <div class="fields">
+      <div><label for="rR">Rotor radius (cm)</label><input id="rR" type="number" step="any"></div>
+      <div><label for="rRpm">RPM</label><input id="rRpm" type="number" step="any"></div>
+      <div><label for="rG">RCF (× g)</label><input id="rG" type="number" step="any"></div>
+    </div>
+    <p class="src">Fill radius and one of RPM or RCF.</p>
+  </div>
+  <div class="card readout" aria-live="polite">
+    <div class="unit" id="rLbl">Result</div>
+    <div class="big" id="rOut">–</div>
+    <div class="note">RCF = 1.118 × 10⁻⁵ × r (cm) × RPM². Standard centrifugation formula.</div>
+  </div>
+</div>
+</section>
+
+<!-- ================= GROWTH ================= -->
+<section class="tool" id="t-growth">
+<div class="sheet">
+  <div class="card">
+    <h2>Doubling time</h2>
+    <div class="fields">
+      <div><label for="gN1">Count at start</label><input id="gN1" type="number" step="any"></div>
+      <div><label for="gN2">Count at end</label><input id="gN2" type="number" step="any"></div>
+      <div><label for="gT">Time between (h)</label><input id="gT" type="number" step="any"></div>
+    </div>
+    <h3>OD₆₀₀</h3>
+    <p class="lede">Cells per OD unit depends on the organism, strain and spectrophotometer. Enter your own calibration from plate counts; no default is assumed.</p>
+    <div class="fields">
+      <div><label for="oOd">Measured OD₆₀₀ (blanked)</label><input id="oOd" type="number" step="any"></div>
+      <div><label for="oCal">Cells/mL per 1.0 OD (your calibration)</label><input id="oCal" type="number" step="any"></div>
+      <div><label for="oTarget">Target OD₆₀₀</label><input id="oTarget" type="number" step="any"></div>
+      <div><label for="oFinal">Final volume (mL)</label><input id="oFinal" type="number" step="any" value="10"></div>
+    </div>
+  </div>
+  <div class="card readout" aria-live="polite">
+    <div class="unit">Doubling time</div>
+    <div class="big" id="gOut">–</div>
+    <dl class="kv"><dt>Generations</dt><dd id="gGen">–</dd><dt>Growth rate (per h)</dt><dd id="gK">–</dd></dl>
+    <h3>OD readout</h3>
+    <dl class="kv"><dt>Estimated cells/mL</dt><dd id="oCells">–</dd><dt>Culture to add</dt><dd id="oCult">–</dd><dt>Medium to add</dt><dd id="oMed">–</dd></dl>
+    <div id="oFlags"></div>
+    <div class="note">Doubling time = t × ln 2 ÷ ln(N₂/N₁). Culture volume = target OD × final volume ÷ measured OD; OD is linear only in the spectrophotometer's linear range, so dilute dense cultures before reading.</div>
+  </div>
+</div>
+</section>
+</main>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const v=id=>{const x=parseFloat($(id).value);return isFinite(x)?x:null;};
+const store={get(k,d){try{const s=localStorage.getItem(k);return s?JSON.parse(s):d;}catch(e){return d;}},set(k,x){try{localStorage.setItem(k,JSON.stringify(x));}catch(e){}}};
+function sup(n){return String(n).split('').map(c=>{const i='0123456789-'.indexOf(c);return i>=0?'⁰¹²³⁴⁵⁶⁷⁸⁹⁻'[i]:c;}).join('');}
+function sci(x,d=3){if(x==null||!isFinite(x))return '–';if(x===0)return '0';const a=Math.abs(x);if(a>=1e5||a<1e-3){let e=Math.floor(Math.log10(a));let m=x/Math.pow(10,e);if(Math.abs(+m.toFixed(d-1))>=10){m/=10;e++;}return m.toFixed(d-1)+' × 10'+sup(e);}return x.toLocaleString('en-US',{maximumSignificantDigits:d+1});}
+function fmtVol(uL){if(uL==null||!isFinite(uL))return '–';if(Math.abs(uL)>=1000)return (uL/1000).toLocaleString('en-US',{maximumFractionDigits:3})+' mL';return uL.toLocaleString('en-US',{maximumFractionDigits:2})+' µL';}
+function flag(cls,txt){return `<div class="flag ${cls}">${txt}</div>`;}
+function svgPt(svg,ev){const p=svg.createSVGPoint();p.x=ev.clientX;p.y=ev.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());}
+function buzz(){if(navigator.vibrate)try{navigator.vibrate(8);}catch(e){}}
+
+/* tabs */
+function go(t){document.querySelectorAll('.rail button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('section.tool').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));store.set('bt-tab',t);}
+document.querySelectorAll('.rail button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+
+/* theme */
+function isDark(){const t=document.documentElement.getAttribute('data-theme');return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;}
+function syncTheme(){$('themeBtn').textContent=isDark()?'Light':'Dark';}
+$('themeBtn').onclick=()=>{document.documentElement.setAttribute('data-theme',isDark()?'light':'dark');store.set('bt-theme',document.documentElement.getAttribute('data-theme'));syncTheme();};
+(()=>{const t=store.get('bt-theme',null);if(t)document.documentElement.setAttribute('data-theme',t);syncTheme();})();
+
+/* =================== HEMOCYTOMETER =================== */
+/* Improved Neubauer: 9 large 1 mm squares. Corners 4×4 (0.25 mm). Top/bottom 5 cols × 4 rows; left/right 4 cols × 5 rows.
+   Center 5×5 medium (0.2 mm), each 4×4 small (0.05 mm); medium boundaries drawn as triple lines. */
+const SQ=[['TL','Top left',0,0,4,4],['T','Top',1,0,5,4],['TR','Top right',2,0,4,4],['L','Left',0,1,4,5],['C','Center',1,1,5,5],['R','Right',2,1,4,5],['BL','Bottom left',0,2,4,4],['B','Bottom',1,2,5,4],['BR','Bottom right',2,2,4,4]];
+const SQI=Object.fromEntries(SQ.map(s=>[s[0],s]));
+const MED=[[0,0],[4,0],[0,4],[4,4],[2,2]];
+const VOL={large:1e-4,medium:4e-6};
+function freshCells(){return {rg:'large',ed:'TL',mk:'l',sel:'TL',msel:0,on:{TL:1,T:0,TR:1,L:0,C:0,R:0,BL:1,B:0,BR:1},marks:Object.fromEntries(SQ.map(s=>[s[0],[]])),hist:[]};}
+let cs=Object.assign(freshCells(),store.get('bt2-cells',{}));
+function saveCells(){store.set('bt2-cells',cs);}
+
+function gridLines(x0,y0,s,cols,rows,isC,thin,mid){
+  let h='';
+  if(isC){
+    for(let i=1;i<20;i++){if(i%4===0)continue;const p=s*i/20;h+=`<line x1="${x0+p}" y1="${y0}" x2="${x0+p}" y2="${y0+s}" stroke="var(--etch-lt)" stroke-width="${thin}"/><line x1="${x0}" y1="${y0+p}" x2="${x0+s}" y2="${y0+p}" stroke="var(--etch-lt)" stroke-width="${thin}"/>`;}
+    for(let i=1;i<5;i++){const p=s*i/5;for(const o of [-mid*1.6,0,mid*1.6]){h+=`<line x1="${x0+p+o}" y1="${y0}" x2="${x0+p+o}" y2="${y0+s}" stroke="var(--etch)" stroke-width="${mid}"/><line x1="${x0}" y1="${y0+p+o}" x2="${x0+s}" y2="${y0+p+o}" stroke="var(--etch)" stroke-width="${mid}"/>`;}}
+  }else{
+    for(let i=1;i<cols;i++){const p=s*i/cols;h+=`<line x1="${x0+p}" y1="${y0}" x2="${x0+p}" y2="${y0+s}" stroke="var(--etch)" stroke-width="${mid}"/>`;}
+    for(let i=1;i<rows;i++){const p=s*i/rows;h+=`<line x1="${x0}" y1="${y0+p}" x2="${x0+s}" y2="${y0+p}" stroke="var(--etch)" stroke-width="${mid}"/>`;}
+  }
+  return h;
+}
+function inMed(x,y){const c=Math.min(4,Math.floor(x/20)),r=Math.min(4,Math.floor(y/20));return MED.some(([a,b])=>a===c&&b===r);}
+function sqCount(k){const m=cs.marks[k]||[];const use=(cs.rg==='medium'&&k==='C')?m.filter(p=>inMed(p[0],p[1])):m;return {l:use.filter(p=>p[2]==='l').length,d:use.filter(p=>p[2]==='d').length};}
+function isCounted(k){return cs.rg==='medium'?k==='C':!!cs.on[k];}
+
+function drawOverview(){
+  let h='';
+  for(const [k,nm,cx,cy,cols,rows] of SQ){
+    const x0=cx*100,y0=cy*100,counted=isCounted(k),c=sqCount(k);
+    h+=`<g class="hit" data-k="${k}" role="button" tabindex="0" aria-label="${nm}${counted?', counted':''}: ${c.l} live, ${c.d} dead">`;
+    h+=`<rect x="${x0}" y="${y0}" width="100" height="100" fill="${counted?'color-mix(in srgb,var(--trypan) 10%,transparent)':'transparent'}"/>`;
+    h+=gridLines(x0,y0,100,cols,rows,k==='C',.25,.45);
+    if(k==='C'&&cs.rg==='medium')MED.forEach(([a,b],i)=>{h+=`<rect x="${x0+a*20}" y="${y0+b*20}" width="20" height="20" fill="color-mix(in srgb,var(--trypan) 22%,transparent)" stroke="var(--trypan)" stroke-width="${i===(cs.msel||0)?2.6:1}"/>`;});
+    for(const p of (cs.marks[k]||[]))h+=`<circle cx="${x0+p[0]}" cy="${y0+p[1]}" r="1.6" fill="${p[2]==='l'?'var(--trypan)':'var(--dead)'}" opacity=".85"/>`;
+    if(c.l||c.d)h+=`<text x="${x0+50}" y="${y0+56}" text-anchor="middle" font-family="Martian Mono,monospace" font-size="15" font-weight="600" fill="var(--ink)" paint-order="stroke" stroke="var(--sheet)" stroke-width="4">${c.l}${c.d?' · '+c.d:''}</text>`;
+    h+=`</g>`;
+  }
+  for(let i=0;i<=3;i++)for(const o of [-1.2,0,1.2]){h+=`<line x1="${i*100+o}" y1="-1.2" x2="${i*100+o}" y2="301.2" stroke="var(--etch)" stroke-width=".5"/><line x1="-1.2" y1="${i*100+o}" x2="301.2" y2="${i*100+o}" stroke="var(--etch)" stroke-width=".5"/>`;}
+  const [,,sx,sy]=SQI[cs.sel];if(cs.rg!=='medium')h+=`<rect x="${sx*100+1.5}" y="${sy*100+1.5}" width="97" height="97" fill="none" stroke="var(--trypan)" stroke-width="3" pointer-events="none"/>`;
+  const svg=$('overview');svg.innerHTML=h;
+  svg.querySelectorAll('g.hit').forEach(g=>{const pick=(ev)=>{if(cs.rg==='medium'){cs.sel='C';if(ev&&ev.clientX!=null&&g.dataset.k==='C'){const q=svgPt(svg,ev);const a=Math.floor((q.x-100)/20),b=Math.floor((q.y-100)/20);const i=MED.findIndex(([x,y])=>x===a&&y===b);if(i>=0)cs.msel=i;}}else cs.sel=g.dataset.k;saveCells();renderCells();};g.onclick=pick;g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}};});
+}
+const MEDN=['top-left','top-right','bottom-left','bottom-right','middle'];
+function medView(){return cs.rg==='medium'&&cs.sel==='C';}
+function toLocal(m){if(!medView())return [m[0],m[1]];const [a,b]=MED[cs.msel||0];return [(m[0]-a*20)*5,(m[1]-b*20)*5];}
+function fromLocal(x,y){if(!medView())return [x,y];const [a,b]=MED[cs.msel||0];return [a*20+x/5,b*20+y/5];}
+function inView(m){if(!medView())return true;const [a,b]=MED[cs.msel||0];return m[0]>=a*20&&m[0]<=a*20+20&&m[1]>=b*20&&m[1]<=b*20+20;}
+function drawZoom(){
+  const k=cs.sel,[,nm,,,cols,rows]=SQI[k],med=medView();
+  let h=`<rect x="0" y="0" width="100" height="100" fill="var(--sheet)" opacity=".35"/>`;
+  if(med){for(let i=1;i<4;i++){const p=i*25;h+=`<line x1="${p}" y1="0" x2="${p}" y2="100" stroke="var(--etch)" stroke-width=".35"/><line x1="0" y1="${p}" x2="100" y2="${p}" stroke="var(--etch)" stroke-width=".35"/>`;}}
+  else h+=gridLines(0,0,100,cols,rows,k==='C',.18,.3);
+  const g='var(--ok)',r='var(--dead)',left=cs.ed==='TL';
+  h+=`<line x1="0" y1="0" x2="100" y2="0" stroke="${g}" stroke-width="1.6"/>`;
+  h+=`<line x1="0" y1="100" x2="100" y2="100" stroke="${r}" stroke-width="1.6" stroke-dasharray="3 2"/>`;
+  h+=`<line x1="0" y1="0" x2="0" y2="100" stroke="${left?g:r}" stroke-width="1.6" ${left?'':'stroke-dasharray="3 2"'}/>`;
+  h+=`<line x1="100" y1="0" x2="100" y2="100" stroke="${left?r:g}" stroke-width="1.6" ${left?'stroke-dasharray="3 2"':''}/>`;
+  const R=med?3:2.3;
+  for(const m of (cs.marks[k]||[]).filter(inView)){const [x,y]=toLocal(m);
+    h+= m[2]==='l'
+      ?`<circle cx="${x}" cy="${y}" r="${R}" fill="color-mix(in srgb,var(--sheet) 80%,transparent)" stroke="var(--trypan)" stroke-width=".9"/><circle cx="${x-R*.26}" cy="${y-R*.26}" r="${R*.3}" fill="var(--trypan)" opacity=".5"/>`
+      :`<circle cx="${x}" cy="${y}" r="${R}" fill="var(--dead)" opacity=".9"/>`;
+  }
+  $('zoom').innerHTML=h;
+  let c=sqCount(k);
+  if(med){const inm=(cs.marks.C||[]).filter(inView);c={l:inm.filter(p=>p[2]==='l').length,d:inm.filter(p=>p[2]==='d').length};}
+  $('zName').textContent=med?`Center · ${MEDN[cs.msel||0]} medium square (0.2 mm)`:nm+(isCounted(k)?'':' (not in average)');
+  $('zLive').textContent=c.l;$('zDead').textContent=c.d;
+  $('medSeg').hidden=!med;
+  $('medSeg').querySelectorAll('button').forEach((bt,i)=>{bt.classList.toggle('on',i===(cs.msel||0));const [a,b]=MED[i];const n=(cs.marks.C||[]).filter(p=>Math.min(4,Math.floor(p[0]/20))===a&&Math.min(4,Math.floor(p[1]/20))===b).length;bt.textContent=(i+1)+(n?` · ${n}`:'');});
+  $('zUse').textContent=cs.rg==='medium'?'Center 5 only':(cs.on[k]?'Leave out of average':'Include in average');
+  $('zUse').disabled=cs.rg==='medium';
+  $('edgeLegend').innerHTML=`<span><i style="background:var(--ok)"></i>count cells touching ${left?'top, left':'top, right'}</span><span><i style="background:var(--dead)"></i>do not count ${left?'bottom, right':'bottom, left'}</span>`;
+}
+$('zoom').addEventListener('click',ev=>{
+  const p=svgPt($('zoom'),ev),k=cs.sel;if(p.x<-2||p.y<-2||p.x>102||p.y>102)return;
+  const arr=cs.marks[k],R=medView()?3:2.3;
+  const i=arr.findIndex(m=>{if(!inView(m))return false;const [x,y]=toLocal(m);return Math.hypot(x-p.x,y-p.y)<R*1.05;});
+  if(i>=0){cs.hist.push({k,op:'del',m:arr[i],ms:cs.msel});arr.splice(i,1);}
+  else{const [x,y]=fromLocal(Math.max(0,Math.min(100,p.x)),Math.max(0,Math.min(100,p.y)));const m=[+x.toFixed(2),+y.toFixed(2),cs.mk];arr.push(m);cs.hist.push({k,op:'add',m,ms:cs.msel});buzz();}
+  if(cs.hist.length>500)cs.hist.shift();
+  saveCells();renderCells();
+});
+document.getElementById('medSeg').querySelectorAll('button').forEach((bt,i)=>bt.onclick=()=>{cs.msel=i;saveCells();renderCells();});
+document.querySelectorAll('[data-mk]').forEach(b=>b.onclick=()=>{cs.mk=b.dataset.mk;saveCells();renderCells();});
+document.querySelectorAll('[data-rg]').forEach(b=>b.onclick=()=>{cs.rg=b.dataset.rg;if(cs.rg==='medium')cs.sel='C';saveCells();renderCells();});
+document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{cs.ed=b.dataset.ed;saveCells();renderCells();});
+$('zUse').onclick=()=>{cs.on[cs.sel]=cs.on[cs.sel]?0:1;saveCells();renderCells();};
+$('zClear').onclick=()=>{const k=cs.sel;for(const m of cs.marks[k])cs.hist.push({k,op:'del',m});cs.marks[k]=[];saveCells();renderCells();};
+$('cellUndo').onclick=()=>{const h=cs.hist.pop();if(!h)return;const arr=cs.marks[h.k];if(h.op==='add'){const i=arr.findIndex(m=>m[0]===h.m[0]&&m[1]===h.m[1]&&m[2]===h.m[2]);if(i>=0)arr.splice(i,1);}else arr.push(h.m);cs.sel=h.k;if(h.ms!=null)cs.msel=h.ms;saveCells();renderCells();};
+$('cellReset').onclick=()=>{const keep={rg:cs.rg,ed:cs.ed,on:cs.on,sel:cs.sel};cs=Object.assign(freshCells(),keep);saveCells();renderCells();};
+$('cMode').onchange=()=>{const t=$('cMode').value==='type';$('typeBox').hidden=!t;$('tapBox').style.display=t?'none':'';store.set('bt2-cmode',$('cMode').value);calcCells();};
+['cPc','cPd','cSs','cSt','cVol','cLive','cDead','cSq'].forEach(i=>$(i).addEventListener('input',()=>{store.set('bt2-prep',['cPc','cPd','cSs','cSt','cVol'].map(x=>$(x).value));calcCells();}));
+
+function prepDf(){
+  const pc=v('cPc'),pd=v('cPd')||0,ss=v('cSs'),st=v('cSt')||0;
+  const pre=pc?(pc+pd)/pc:null, stn=ss?(ss+st)/ss:null;
+  $('cPreDf').textContent=pre?'1:'+(+pre.toFixed(3)):'–';$('cStDf').textContent=stn?'1:'+(+stn.toFixed(3)):'–';
+  $('cPreFill').setAttribute('opacity',pre?Math.max(.12,.55/pre).toFixed(2):'.35');
+  const df=(pre&&stn)?pre*stn:null;$('cDfOut').textContent=df?(+df.toFixed(3)):'–';return {df,stained:st>0};
+}
+let LAST_LIVE=null;
+function calcCells(){
+  const {df,stained}=prepDf();
+  const typed=$('cMode').value==='type';
+  $('cSqLbl').textContent=cs.rg==='medium'?'Center medium squares counted':'Large squares counted';
+  let live,dead,k;
+  if(typed){live=v('cLive');dead=v('cDead')||0;k=v('cSq');}
+  else if(cs.rg==='medium'){const c=sqCount('C');live=c.l;dead=c.d;k=5;}
+  else{const on=SQ.map(s=>s[0]).filter(x=>cs.on[x]);k=on.length;live=0;dead=0;for(const x of on){const c=sqCount(x);live+=c.l;dead+=c.d;}}
+  const vq=VOL[cs.rg];$('cVq').textContent=sci(vq)+' mL';$('cDfK').textContent=df?(+df.toFixed(3)):'–';
+  let f='';
+  if(live==null||!k||!df){$('cOut').textContent='–';['cVia','cTot','cAll','cN','cK'].forEach(i=>$(i).textContent='–');$('cFlags').innerHTML='';$('cFormula').innerHTML='';LAST_LIVE=null;return;}
+  const per=live/k*df/vq, tot=(live+dead)/k*df/vq, n=live+dead, vol=v('cVol');
+  LAST_LIVE=per;
+  $('cOut').textContent=sci(per);
+  $('cVia').textContent=!stained?'not stained':(n?(live/n*100).toFixed(1)+' %':'–');
+  $('cTot').textContent=sci(tot);$('cAll').textContent=vol?sci(per*vol):'–';$('cN').textContent=n;$('cK').textContent=k+(cs.rg==='medium'?' medium':' large');
+  $('cFormula').innerHTML=`Live/mL = (${live} ÷ ${k}) × ${+df.toFixed(3)} ÷ ${sci(vq)} mL = <span class="num">${sci(per)}</span>`;
+  if(n<100)f+=flag('','Fewer than 100 cells counted. Count more squares for a steadier number. [Merck]');
+  if(!typed&&cs.rg==='large'&&k>1){const arr=SQ.map(s=>s[0]).filter(x=>cs.on[x]).map(x=>sqCount(x).l);const m=arr.reduce((a,b)=>a+b,0)/arr.length;const sd=Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/(arr.length-1));if(m>0&&sd/m>0.3)f+=flag('','Squares differ by more than 30 % (CV '+(sd/m*100).toFixed(0)+' %). Mix the suspension and reload the chamber. <span class="tag">LOCAL</span>');}
+  if(stained&&n&&live/n<0.8)f+=flag('bad','Viability below 80 %. <span class="tag">LOCAL</span>');
+  if(!stained&&dead>0)f+=flag('','Dead cells marked, but no trypan blue is entered in the prep.');
+  $('cFlags').innerHTML=f;
+}
+function renderCells(){
+  document.querySelectorAll('[data-mk]').forEach(b=>b.classList.toggle('on',b.dataset.mk===cs.mk));
+  document.querySelectorAll('[data-rg]').forEach(b=>b.classList.toggle('on',b.dataset.rg===cs.rg));
+  document.querySelectorAll('[data-ed]').forEach(b=>b.classList.toggle('on',b.dataset.ed===cs.ed));
+  drawOverview();drawZoom();calcCells();
+}
+$('toSeed').onclick=()=>{if(LAST_LIVE){$('sConc').value=Math.round(LAST_LIVE);calcSeed();}go('seed');};
+(()=>{const p=store.get('bt2-prep',null);if(p)['cPc','cPd','cSs','cSt','cVol'].forEach((x,i)=>{if(p[i]!=null&&p[i]!=='')$(x).value=p[i];});$('cMode').value=store.get('bt2-cmode','tap');})();
+
+/* =================== PLATES =================== */
+function freshPlates(){return {dishes:{},sel:'1:0',sect:false,hist:[]};}
+let pl=Object.assign(freshPlates(),store.get('bt2-plates',{}));
+function savePl(){store.set('bt2-plates',pl);}
+function dishOf(t,j){const key=String(t);pl.dishes[key]=pl.dishes[key]||[];while(pl.dishes[key].length<=j)pl.dishes[key].push({m:[],t:''});return pl.dishes[key][j];}
+function dishVal(d){if(!d)return null;if(/^tntc$/i.test(d.t))return Infinity;if(d.m.length)return d.m.length;if(d.t!==''&&isFinite(+d.t)&&+d.t>=0)return +d.t;return null;}
+function fold(){const tr=v('pTr'),dl=v('pDil');return (tr>0&&dl>0)?(tr+dl)/tr:null;}
+function isDecimal(f){return f&&Math.abs(f-10)<1e-9;}
+function tubeLabel(i){const f=fold();if(i===0)return 'Sample';if(!f)return '–';return isDecimal(f)?'10'+sup(-i):'1:'+sci(Math.pow(f,i),3);}
+function nTubes(){return Math.max(1,Math.min(10,Math.round(v('pN')||1)));}
+function range(){return $('pLo').value.split('-').map(Number);}
+function dishSvg(d,big){
+  const val=dishVal(d),id=big?'agB':'agS';
+  let h=`<defs><radialGradient id="${id}" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="var(--agar-gel)" stop-opacity=".7"/><stop offset="1" stop-color="var(--agar-gel)"/></radialGradient></defs>`;
+  h+=`<circle cx="50" cy="50" r="48" fill="var(--glass)" stroke="var(--agar-rim)" stroke-width="${big?1.4:3}"/><circle cx="50" cy="50" r="44.5" fill="url(#${id})" stroke="var(--agar-rim)" stroke-width="${big?.6:1.5}"/>`;
+  if(big)h+=`<path d="M22 20 A40 40 0 0 1 60 9" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.6" stroke-linecap="round"/>`;
+  if(big&&pl.sect){for(let a=0;a<8;a++){const t=a*Math.PI/4;h+=`<line x1="50" y1="50" x2="${(50+44.5*Math.cos(t)).toFixed(2)}" y2="${(50+44.5*Math.sin(t)).toFixed(2)}" stroke="var(--pen)" stroke-width=".35" stroke-dasharray="1.5 1.2" opacity=".6"/>`;}}
+  for(const p of d.m)h+=big?`<circle cx="${p[0]}" cy="${p[1]}" r="1.3" fill="#f7ecd2" stroke="#a7834a" stroke-width=".35"/><circle cx="${p[0]+1}" cy="${p[1]-1}" r=".75" fill="var(--pen)"/>`:`<circle cx="${p[0]}" cy="${p[1]}" r="1.6" fill="var(--pen)" opacity=".75"/>`;
+  if(val===Infinity)h+=`<text x="50" y="${big?57:58}" text-anchor="middle" font-family="Martian Mono,monospace" font-size="${big?18:22}" font-weight="600" fill="var(--dead)">TNTC</text>`;
+  return h;
+}
+function renderSeries(){
+  const n=nTubes(),per=+$('pPer').value,[lo,hi]=range();
+  let h='';
+  for(let i=0;i<=n;i++){
+    if(i>0)h+=`<div class="xfer"><b>→</b>${v('pTr')??'–'} µL<br>into ${v('pDil')??'–'}</div>`;
+    const op=i===0?.7:Math.max(.1,.7/Math.pow(1.5,i));
+    h+=`<div class="tcol"><svg viewBox="0 0 30 60" width="26" height="52" aria-hidden="true"><path d="M5 2h20v42a10 10 0 0 1-20 0z" fill="var(--glass)" stroke="var(--etch)" stroke-width="1.3"/><path d="M6 18h18v26a9 9 0 0 1-18 0z" fill="var(--agar)" opacity="${op.toFixed(2)}"/></svg>
+      <span class="cap">${tubeLabel(i)}</span><span class="sub">${i===0?'undiluted':''}</span><div class="thumbs">`;
+    for(let j=0;j<per;j++){
+      const d=dishOf(i,j),val=dishVal(d),id=i+':'+j,inr=val!=null&&val>=lo&&val<=hi;
+      h+=`<div class="thumb ${pl.sel===id?'sel':''} ${inr?'inr':''}" data-id="${id}"><svg viewBox="0 0 100 100" role="button" tabindex="0" aria-label="Open ${tubeLabel(i)} plate ${j+1}">${dishSvg(d,false)}</svg>
+        <input class="num pc" data-id="${id}" value="${d.m.length?d.m.length:d.t}" inputmode="text" autocomplete="off" placeholder="–" aria-label="${tubeLabel(i)} plate ${j+1} count"></div>`;
+    }
+    h+=`</div></div>`;
+  }
+  $('series').innerHTML=h;
+  $('series').querySelectorAll('.thumb svg').forEach(s=>{const open=()=>{pl.sel=s.parentNode.dataset.id;savePl();markSel();drawDish();};s.onclick=open;s.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}};});
+  $('series').querySelectorAll('input.pc').forEach(inp=>{
+    inp.onfocus=()=>{if(pl.sel!==inp.dataset.id){pl.sel=inp.dataset.id;savePl();markSel();drawDish();}};
+    inp.oninput=()=>{const [i,j]=inp.dataset.id.split(':').map(Number);const d=dishOf(i,j);d.t=inp.value.trim();d.m=[];savePl();syncThumb(inp.dataset.id,false);drawDish();calcPlates();};
+  });
+  calcPlates();
+}
+function markSel(){$('series').querySelectorAll('.thumb').forEach(t=>t.classList.toggle('sel',t.dataset.id===pl.sel));}
+function selIdx(){let [i,j]=pl.sel.split(':').map(Number);if(i>nTubes()||j>=+$('pPer').value){i=Math.min(i,nTubes());j=0;pl.sel=i+':'+j;}return [i,j];}
+function drawDish(){
+  const [i,j]=selIdx();const d=dishOf(i,j);
+  $('dish').innerHTML=dishSvg(d,true);
+  const val=dishVal(d);$('dCount').textContent=val===Infinity?'TNTC':(val??0);
+  $('dTitle').textContent=`${tubeLabel(i)} · plate ${j+1}`;
+  $('dSect').textContent=pl.sect?'Hide sectors':'Sectors';
+  $('dTntc').textContent=/^tntc$/i.test(d.t)?'Undo TNTC':'Mark TNTC';
+}
+function syncThumb(id,setInput=true){const [i,j]=id.split(':').map(Number);const d=dishOf(i,j);const t=$('series').querySelector(`.thumb[data-id="${id}"]`);if(!t)return;t.querySelector('svg').innerHTML=dishSvg(d,false);if(setInput)t.querySelector('input').value=d.m.length?d.m.length:d.t;const val=dishVal(d),[lo,hi]=range();t.classList.toggle('inr',val!=null&&val>=lo&&val<=hi);}
+$('dish').addEventListener('click',ev=>{
+  const p=svgPt($('dish'),ev);if(Math.hypot(p.x-50,p.y-50)>44)return;
+  const [i,j]=selIdx();const d=dishOf(i,j);if(/^tntc$/i.test(d.t)||d.m.length===0)d.t='';
+  const k=d.m.findIndex(m=>Math.hypot(m[0]-p.x,m[1]-p.y)<1.6);
+  if(k>=0){pl.hist.push({id:pl.sel,op:'del',m:d.m[k]});d.m.splice(k,1);}
+  else{const m=[+p.x.toFixed(1),+p.y.toFixed(1)];d.m.push(m);pl.hist.push({id:pl.sel,op:'add',m});buzz();}
+  if(pl.hist.length>1000)pl.hist.shift();
+  savePl();drawDish();syncThumb(pl.sel);calcPlates();
+});
+$('dUndo').onclick=()=>{const h=pl.hist.pop();if(!h)return;pl.sel=h.id;const [i,j]=h.id.split(':').map(Number);const d=dishOf(i,j);if(h.op==='add'){const k=d.m.findIndex(m=>m[0]===h.m[0]&&m[1]===h.m[1]);if(k>=0)d.m.splice(k,1);}else d.m.push(h.m);savePl();markSel();drawDish();syncThumb(h.id);calcPlates();};
+$('dSect').onclick=()=>{pl.sect=!pl.sect;savePl();drawDish();};
+$('dTntc').onclick=()=>{const [i,j]=selIdx();const d=dishOf(i,j);if(/^tntc$/i.test(d.t))d.t='';else{d.t='TNTC';d.m=[];}savePl();drawDish();syncThumb(pl.sel);calcPlates();};
+$('dClr').onclick=()=>{const [i,j]=selIdx();const d=dishOf(i,j);for(const m of d.m)pl.hist.push({id:pl.sel,op:'del',m});d.m=[];d.t='';savePl();drawDish();syncThumb(pl.sel);calcPlates();};
+$('pClear').onclick=()=>{pl.dishes={};pl.hist=[];savePl();renderSeries();drawDish();};
+$('pEx').onclick=()=>{$('pTr').value=100;$('pDil').value=900;$('pN').value=4;$('pPer').value='2';$('pVol').value=1;$('pLo').value='25-250';$('pUnit').value='g';
+  pl.dishes={'1':[{m:[],t:'TNTC'},{m:[],t:'TNTC'}],'2':[{m:[],t:'232'},{m:[],t:'244'}],'3':[{m:[],t:'33'},{m:[],t:'28'}],'4':[{m:[],t:'3'},{m:[],t:'2'}]};pl.sel='2:0';pl.hist=[];saveSettings();renderSeries();drawDish();};
+function saveSettings(){pl.set={tr:$('pTr').value,dil:$('pDil').value,n:$('pN').value,per:$('pPer').value,vol:$('pVol').value,unit:$('pUnit').value,range:$('pLo').value};savePl();}
+['pTr','pDil','pN','pPer','pVol','pUnit','pLo'].forEach(i=>$(i).addEventListener($(i).tagName==='SELECT'?'change':'input',()=>{saveSettings();renderSeries();drawDish();}));
+(()=>{const s=pl.set;if(!s)return;$('pTr').value=s.tr;$('pDil').value=s.dil;$('pN').value=s.n;$('pPer').value=s.per;$('pVol').value=s.vol;$('pUnit').value=s.unit;$('pLo').value=s.range;})();
+
+/* BAM rounding: two significant figures; third digit 5 rounds up only if second digit is odd */
+function bamRound(x){
+  if(!(x>0))return x;
+  const e=Math.floor(Math.log10(x)), scale=Math.pow(10,e-1);
+  const digits=Math.floor(x/scale+1e-9), rest=x/scale-digits, third=Math.floor(rest*10+1e-9), beyond=rest*10-third;
+  let up;if(third>5||(third===5&&beyond>1e-9))up=true;else if(third<5)up=false;else up=(digits%2===1);
+  return (digits+(up?1:0))*scale;
+}
+function calcPlates(){
+  const [lo,hi]=range(), vol=v('pVol'), unit=$('pUnit').value, f=fold(), n=nTubes(), per=+$('pPer').value;
+  $('pUnitLbl').textContent='CFU per '+unit;$('pFold').textContent=f?'1:'+(+f.toFixed(4)):'–';
+  const rows=[];
+  for(let i=0;i<=n;i++){const vals=[];for(let j=0;j<per;j++){const x=dishVal(dishOf(i,j));if(x!=null)vals.push(x);}if(vals.length)rows.push({i,D:f?Math.pow(1/f,i):null,plates:vals});}
+  let out='–',raw='–',used='–',work='',fl='';
+  if(!rows.length||!vol||!f){$('pOut').textContent=out;$('pRaw').textContent=raw;$('pUsed').textContent=used;$('pWork').innerHTML='';$('pFlags').innerHTML=(!f?flag('bad','Enter the transfer and diluent volumes.'):'');return;}
+  const lbl=r=>tubeLabel(r.i);
+  const inR=rows.map(r=>({i:r.i,D:r.D,c:r.plates.filter(x=>x>=lo&&x<=hi)})).filter(r=>r.c.length);
+  if(inR.length){
+    const use=[inR[0]];if(inR[1]&&inR[1].i===inR[0].i+1)use.push(inR[1]);
+    const sum=use.reduce((a,r)=>a+r.c.reduce((x,y)=>x+y,0),0);
+    const denom=use.reduce((a,r)=>a+r.c.length*r.D,0);
+    const N=sum/denom, perV=N/vol, rep=bamRound(perV);
+    out=sci(rep,2);raw=sci(perV,5);used=use.map(r=>`${lbl(r)}: ${r.c.join(', ')}`).join(' · ');
+    const n1=use[0].c.length,n2=use[1]?use[1].c.length:0;
+    if(isDecimal(f)&&use[0].i>0)work=`ΣC = ${sum}; n₁ = ${n1}${n2?`, n₂ = ${n2}`:''}; d = ${lbl(use[0])}<br>N = ${sum} ÷ [(1 × ${n1})${n2?` + (0.1 × ${n2})`:''}] × ${lbl(use[0])} = ${sci(N,5)}`;
+    else work=`ΣC = ${sum}; Σ(n·D) = ${use.map(r=>`${r.c.length} × ${sci(r.D,4)}`).join(' + ')}<br>N = ${sum} ÷ ${sci(denom,4)} = ${sci(N,5)}`;
+    if(vol!==1)work+=`<br>÷ ${vol} mL plated = ${sci(perV,5)}`;
+    work+=` → reported ${sci(rep,2)}`;
+    if(inR.length>use.length)fl+=flag('','Other dilutions also had countable plates; only the first countable dilution and the next one were used. Check the series.');
+    if(rows.some(r=>r.plates.some(x=>x<lo||x>hi)&&r.plates.some(x=>x>=lo&&x<=hi)))fl+=flag('','Some duplicate plates fell outside the range; only plates inside it were used.');
+    if(!isDecimal(f))fl+=flag('','Step is not 1:10. The BAM formula is written for decimal dilutions; the same weighting was applied to your step.');
+    fl+=flag('ok','Count within '+lo+'–'+hi+'.');
+  }else{
+    const all=rows.flatMap(r=>r.plates.map(x=>({x,D:r.D,i:r.i}))), first=rows[0];
+    if(all.every(p=>p.x===0)){out='< '+sci(1/first.D/vol,2)+' *';raw='no colonies';used='none';fl+=flag('','No colonies on any plate: reported as less than 1 × the lowest dilution, marked * as estimated. [BAM]');}
+    else if(all.every(p=>p.x<lo)){out='< '+sci(lo/first.D/vol,2);raw='all below '+lo;used='none';fl+=flag('','All plates below '+lo+': reported as less than '+lo+' × 1/d of the lowest dilution. Record the actual counts. [BAM]');}
+    else{
+      const fin=all.filter(p=>isFinite(p.x)&&p.x>0);
+      if(!fin.length){out='TNTC';raw='–';used='none';fl+=flag('bad','Every plate too numerous to count. Plate further dilutions.');}
+      else{const over=all.every(p=>p.x>hi),target=over?hi:(lo+hi)/2;const best=fin.sort((a,b)=>Math.abs(a.x-target)-Math.abs(b.x-target))[0];const val=best.x/best.D/vol;out=sci(bamRound(val),2)+' EAPC';raw=sci(val,5);used=`${tubeLabel(best.i)}: ${best.x}`;
+        fl+=flag('',over?'All plates above '+hi+': estimated from the plate nearest '+hi+' and flagged EAPC. [BAM]':'No plate inside '+lo+'–'+hi+'. Estimated count, flagged EAPC.');}
+    }
+  }
+  $('pOut').textContent=out;$('pRaw').textContent=raw;$('pUsed').textContent=used;$('pWork').innerHTML=work;$('pFlags').innerHTML=fl;
+}
+
+/* =================== SEEDING =================== */
+['sConc','sPer','sWells','sVolW','sExtra'].forEach(i=>$(i).oninput=calcSeed);
+function calcSeed(){
+  const c=v('sConc'),per=v('sPer'),n=v('sWells'),vw=v('sVolW'),ex=(v('sExtra')||0)/100;
+  if(!c||!per||!n||!vw){['sOut','sMed','sTotV','sCells','sDens'].forEach(i=>$(i).textContent='–');$('sFlags').innerHTML='';return;}
+  const totV=n*vw*(1+ex), cells=n*per*(1+ex), susp=cells/c*1000;
+  $('sOut').textContent=fmtVol(susp);$('sMed').textContent=fmtVol(totV-susp);$('sTotV').textContent=fmtVol(totV);$('sCells').textContent=sci(cells);$('sDens').textContent=sci(per/(vw/1000))+' cells/mL';
+  $('sFlags').innerHTML=susp>totV?flag('bad','The stock is too dilute: the suspension alone exceeds the total volume. Concentrate the cells or lower the cells per well.'):'';
+}
+
+/* =================== DILUTIONS =================== */
+['dC1','dV1','dC2','dV2'].forEach(i=>$(i).oninput=calcDil);
+function calcDil(){
+  const c1=v('dC1'),v1=v('dV1'),c2=v('dC2'),v2=v('dV2');const miss=[c1,v1,c2,v2].filter(x=>x==null);
+  let lbl='Solved value',out='–',f='';
+  if(miss.length===1){
+    let r;
+    if(c1==null){r=c2*v2/v1;lbl='C₁ stock';}
+    else if(v1==null){r=c2*v2/c1;lbl='V₁ stock volume';if(isFinite(r))f=flag('ok','Add '+sci(v2-r)+' of diluent.');}
+    else if(c2==null){r=c1*v1/v2;lbl='C₂ final';}
+    else{r=c1*v1/c2;lbl='V₂ final volume';}
+    if(c1!=null&&c2!=null&&c2>c1)f=flag('bad','Final concentration is higher than the stock.');
+    out=isFinite(r)?sci(r):'–';
+  }else if(miss.length>1)f=flag('','Fill three of the four boxes.');
+  $('dLbl').textContent=lbl;$('dOut').textContent=out;$('dFlags').innerHTML=f;
+}
+['srStart','srFold','srSteps','srVol'].forEach(i=>$(i).oninput=calcSerial);
+function calcSerial(){
+  const s=v('srStart'),f=v('srFold'),n=Math.min(20,Math.max(1,Math.round(v('srSteps')||0))),V=v('srVol');const tb=$('srTable').querySelector('tbody');
+  if(!s||!f||f<=1||!V){tb.innerHTML='';return;}
+  const carry=V/(f-1);
+  let h='';for(let i=1;i<=n;i++){h+=`<tr><td>${i}</td><td class="num">1:${sci(Math.pow(f,i),3)}</td><td class="num">${sci(s/Math.pow(f,i))}</td><td class="num">${carry.toFixed(1)}</td><td class="num">${V.toFixed(1)}</td></tr>`;}
+  tb.innerHTML=h;
+}
+calcSerial();
+
+/* =================== SOLUTIONS =================== */
+['mType','mConc','mConcU','mVol','mVolU','mMw'].forEach(i=>{$(i).oninput=calcSol;$(i).onchange=calcSol;});
+function calcSol(){
+  const t=$('mType').value;$('mConcUWrap').hidden=t!=='molar';$('mMwWrap').hidden=t!=='molar';
+  const c=v('mConc'),V=v('mVol'),vu=+$('mVolU').value;let g=null,kv='';
+  if(c!=null&&V!=null){const L=V*vu;
+    if(t==='molar'){const mw=v('mMw');if(mw){const M=c*+$('mConcU').value;g=M*L*mw;kv=`<dt>Moles</dt><dd>${sci(M*L)} mol</dd><dt>Volume</dt><dd>${sci(L*1000)} mL</dd>`;}}
+    else if(t==='pct'){g=c*(L*1000)/100;kv=`<dt>Rule</dt><dd>${c} g per 100 mL</dd>`;}
+    else{g=c*(L*1000)/1000;kv=`<dt>Rule</dt><dd>${c} mg per mL</dd>`;}
+  }
+  $('mOut').textContent=g==null?'–':(g>=1?g.toLocaleString('en-US',{maximumFractionDigits:4})+' g':g>=1e-3?(g*1000).toLocaleString('en-US',{maximumFractionDigits:3})+' mg':(g*1e6).toLocaleString('en-US',{maximumFractionDigits:3})+' µg');
+  $('mKv').innerHTML=kv;
+}
+calcSol();
+
+/* =================== SPIN =================== */
+let lastSpin='rpm';$('rRpm').oninput=()=>{lastSpin='rpm';calcSpin();};$('rG').oninput=()=>{lastSpin='g';calcSpin();};$('rR').oninput=calcSpin;
+function calcSpin(){const r=v('rR'),rpm=v('rRpm'),g=v('rG');let o='–',l='Result';
+  if(r){if(lastSpin==='rpm'&&rpm){o=Math.round(1.118e-5*r*rpm*rpm).toLocaleString('en-US')+' × g';l='RCF';}else if(g){o=Math.round(Math.sqrt(g/(1.118e-5*r))).toLocaleString('en-US')+' rpm';l='RPM';}}
+  $('rOut').textContent=o;$('rLbl').textContent=l;}
+
+/* =================== GROWTH =================== */
+['gN1','gN2','gT'].forEach(i=>$(i).oninput=calcGrowth);['oOd','oCal','oTarget','oFinal'].forEach(i=>$(i).oninput=calcOd);
+function calcGrowth(){const a=v('gN1'),b=v('gN2'),t=v('gT');if(!a||!b||!t||b<=a){$('gOut').textContent=(a&&b&&b<=a)?'no growth':'–';$('gGen').textContent='–';$('gK').textContent='–';return;}
+  const g=Math.log2(b/a);$('gOut').textContent=(t/g).toFixed(2)+' h';$('gGen').textContent=g.toFixed(2);$('gK').textContent=(Math.log(b/a)/t).toFixed(3);}
+function calcOd(){const od=v('oOd'),cal=v('oCal'),tg=v('oTarget'),fv=v('oFinal');let f='';
+  $('oCells').textContent=(od!=null&&cal)?sci(od*cal):'–';
+  if(od&&tg&&fv){const cv=tg*fv/od;$('oCult').textContent=cv>fv?'–':sci(cv)+' mL';$('oMed').textContent=cv>fv?'–':sci(fv-cv)+' mL';if(cv>fv)f=flag('bad','Target OD is above the measured OD; the culture cannot be diluted up.');}
+  else{$('oCult').textContent='–';$('oMed').textContent='–';}
+  if(od!=null&&od>1)f+=flag('','OD above 1.0 is often outside the linear range. Dilute the sample, read again, and multiply back. <span class="tag">LOCAL</span>');
+  $('oFlags').innerHTML=f;}
+
+/* boot */
+$('cMode').onchange();renderCells();renderSeries();drawDish();go(store.get('bt-tab','cells'));
+</script>
